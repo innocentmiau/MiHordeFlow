@@ -1,0 +1,35 @@
+{
+  "name": "com.andreleandrodev.mihordeflow",
+  "displayName": "MiHordeFlow",
+  "version": "1.0.0",
+  "unity": "6000.3",
+  "unityRelease": "0f1",
+  "description": "Replaces NavMeshAgent's built in local avoidance with a reactive separation pass running as a Burst job on the worker threads. Agents keep the NavMeshAgent for pathing and path following, and are pushed apart by a clamped proportional force instead of the built in solver's predictive RVO, so a dense crowd compresses and relaxes rather than snapping and teleporting. Groups let flyers, melee and slow ranged run different planes and update intervals in one scene.",
+  "author": {
+    "name": "Andre Leandro",
+    "url": "https://github.com/innocentmiau",
+    "email": "andreleandro.dev@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innocentmiau/MiHordeFlow.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "navmesh",
+    "avoidance",
+    "separation",
+    "crowd",
+    "horde",
+    "burst",
+    "jobs",
+    "performance"
+  ],
+  "dependencies": {
+    "com.unity.burst": "1.8.30",
+    "com.unity.collections": "2.6.8",
+    "com.unity.mathematics": "1.3.3"
+  },
+  "documentationUrl": "https://github.com/innocentmiau/MiHordeFlow#readme",
+  "licensesUrl": "https://github.com/innocentmiau/MiHordeFlow/blob/main/LICENSE.md"
+}
