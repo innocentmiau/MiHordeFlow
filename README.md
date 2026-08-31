@@ -17,6 +17,7 @@ This is *reactive* instead. Agents are allowed to walk into each other, and are 
 1. Drop `SeparationSystem` on any always-loaded manager object. That is the whole scene setup.
 2. On the enemy prefab, add `NavMeshSeparationAgent` next to the `NavMeshAgent`.
 3. Optionally add `HordeEntity` for chase behaviour with freeze/resume.
+4. Optionally drop `HordePathScheduler` on the same manager object to pace repathing by distance to goal.
 
 Nothing else is required. With no settings asset assigned the system builds defaults in memory, so it works on first play. If bodies register into a scene with no `SeparationSystem`, you get a warning rather than silence.
 
@@ -51,6 +52,41 @@ entity.SetFrozen(inAttack);      // for driving from a state machine
 `Freeze` sets `isStopped` rather than disabling the agent. A disabled agent leaves the navmesh and has to be warped back, and anything standing on it during those frames pathed straight through where it used to be. `isStopped` keeps the agent in place and on the mesh, and stops the steering and path following that are most of what an idle agent costs.
 
 By default a frozen entity still takes part in separation, so an enemy stopped mid-attack still blocks the ones behind it. Clear `separateWhileFrozen` and it drops out of the roster entirely while frozen: cheaper, but the crowd walks through it.
+
+## Path scheduling
+
+Optional. Drop **`HordePathScheduler`** on a manager object and it takes over deciding when each `HordeEntity`
+repaths. With no scheduler in the scene, entities pace themselves on their own `repathInterval` exactly as before.
+
+Repathing a horde on one shared interval wastes most of it: the agents about to reach the player and the agents
+still crossing the map get the same share of a budget only the first group can use. The scheduler paces each
+entity by **how far it is from its goal**, so the near ranks update often and the far ones update rarely.
+
+There is no sorting anywhere in this. If the *interval* is a function of distance, priority falls out for free — an
+entity ten metres out is simply due ten times as often as one sixty metres out. Ranking them against each other
+each frame would only change which entities win a frame that ran out of budget, and rotating where the scan starts
+spreads that around more evenly than a sort would.
+
+| Setting | What it does |
+| --- | --- |
+| `repathsPerFrame` | Ceiling on path requests per frame. The expensive part is the request itself, not the bookkeeping. |
+| `nearInterval` / `nearDistance` | How often an entity this close to its goal repaths. |
+| `farInterval` / `farDistance` | How often an entity this far out repaths. Interval lerps between the two. |
+| `guaranteedInterval` | Nothing goes longer than this without a repath, whatever its distance. |
+
+`guaranteedInterval` runs as a **separate first pass**, and it is not optional decoration. Distance pacing alone can
+starve the far ranks indefinitely if the near ones keep filling the budget, and an entity that never repaths is one
+walking at where the player used to be. Anything past the guarantee jumps the queue regardless of distance.
+
+`RepathsLastFrame` reports what actually went out. If it sits pinned at `repathsPerFrame` every frame the crowd is
+asking for more than it is being given — raise the budget or widen `nearInterval`.
+
+The scheduler asks each entity for its distance as a *return value* from the repath rather than polling for it up
+front. Working out how far an entity is from its goal means reading two transforms, and asking all of them in order
+to choose a hundred would cost more than repathing them. Only the entities actually being repathed pay for it,
+which is what makes the budget mean anything.
+
+`IRepathBody` is the contract, so anything with a destination can be paced by this, not only a `NavMeshAgent`.
 
 ## Groups
 

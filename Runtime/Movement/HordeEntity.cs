@@ -1,4 +1,5 @@
 using System.Collections;
+using MiHordeFlow.Pathing;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -22,7 +23,7 @@ namespace MiHordeFlow.Movement
     /// </summary>
     [RequireComponent(typeof(NavMeshAgent))]
     [DisallowMultipleComponent]
-    public class HordeEntity : MonoBehaviour
+    public class HordeEntity : MonoBehaviour, IRepathBody
     {
 
         [SerializeField] private NavMeshAgent agent;
@@ -40,6 +41,41 @@ namespace MiHordeFlow.Movement
         private Vector3 _requestedDestination = Vector3.positiveInfinity;
         private float _repathCountdown;
         private bool _frozen;
+        private int _repathIndex = -1;
+        private float _nextRepathTime;
+        private float _lastRepathTime;
+
+        /// <summary>
+        /// Slot this entity occupies in the scheduler's roster. Written by the HordePathScheduler only.
+        /// </summary>
+        public int RepathIndex
+        {
+            get => _repathIndex;
+            set => _repathIndex = value;
+        }
+
+        /// <summary>
+        /// When this entity is next due a repath. Written by the HordePathScheduler only.
+        /// </summary>
+        public float NextRepathTime
+        {
+            get => _nextRepathTime;
+            set => _nextRepathTime = value;
+        }
+
+        /// <summary>
+        /// When this entity was last repathed. Written by the HordePathScheduler only.
+        /// </summary>
+        public float LastRepathTime
+        {
+            get => _lastRepathTime;
+            set => _lastRepathTime = value;
+        }
+
+        /// <summary>
+        /// Whether repathing this entity would mean anything right now.
+        /// </summary>
+        public bool WantsRepath => !_frozen && _target && agent && agent.enabled;
 
         /// <summary>
         /// The agent doing the pathfinding.
@@ -102,7 +138,8 @@ namespace MiHordeFlow.Movement
         {
             _requestedDestination = Vector3.positiveInfinity;
             _repathCountdown = repathInterval;
-            Repath();
+            _nextRepathTime = Time.time;
+            Repath(Time.time);
         }
 
         /// <summary>
@@ -182,30 +219,51 @@ namespace MiHordeFlow.Movement
             _frozen = false;
             _requestedDestination = Vector3.positiveInfinity;
             _repathCountdown = staggerFirstRepath ? Random.value * repathInterval : 0f;
+
+            HordePathScheduler.Register(this);
         }
 
+        private void OnDisable() => HordePathScheduler.Unregister(this);
+
+        /*
+         * Skipped entirely when a scheduler is present, rather than running alongside it. Two things deciding when
+         * an entity repaths means the interval that actually applies is the shorter of the two, which makes the
+         * scheduler's budget a suggestion and its distance pacing invisible.
+         */
         private void Update()
         {
+            if (HordePathScheduler.Instance) return;
             if (_frozen || !agent.enabled) return;
 
             _repathCountdown -= Time.deltaTime;
             if (_repathCountdown > 0f) return;
 
             _repathCountdown = repathInterval;
-            Repath();
+            Repath(Time.time);
         }
 
         private bool CanPath() => agent && agent.enabled && agent.isOnNavMesh;
 
-        private void Repath()
+        /// <summary>
+        /// Recomputes the path. Called by the HordePathScheduler when this entity's turn comes up,
+        /// or by this entity's own interval when there is no scheduler in the scene.
+        /// </summary>
+        /// <param name="time">The current time.</param>
+        /// <returns>Distance to the goal, which is what the scheduler turns into how soon to come back.</returns>
+        public float Repath(float time)
         {
-            if (!_target || !CanPath()) return;
+            if (!_target || !CanPath()) return float.MaxValue;
 
             Vector3 destination = _target.position;
-            if (Vector3.Distance(destination, _requestedDestination) <= repathThreshold) return;
+            float distance = Vector3.Distance(destination, transform.position);
 
-            _requestedDestination = destination;
-            agent.SetDestination(destination);
+            if (Vector3.Distance(destination, _requestedDestination) > repathThreshold)
+            {
+                _requestedDestination = destination;
+                agent.SetDestination(destination);
+            }
+
+            return distance;
         }
 
         private IEnumerator WarpAtEndOfFrame(Vector3 position)

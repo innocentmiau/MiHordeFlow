@@ -1,10 +1,10 @@
 {
   "name": "com.andreleandrodev.mihordeflow",
   "displayName": "MiHordeFlow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "unity": "6000.3",
   "unityRelease": "0f1",
-  "description": "Replaces NavMeshAgent's built in local avoidance with a reactive separation pass running as a Burst job on the worker threads. Agents keep the NavMeshAgent for pathing and path following, and are pushed apart by a clamped proportional force instead of the built in solver's predictive RVO, so a dense crowd compresses and relaxes rather than snapping and teleporting. Groups let flyers, melee and slow ranged run different planes and update intervals in one scene.",
+  "description": "Replaces NavMeshAgent's built in local avoidance with a reactive separation pass running as a Burst job on the worker threads. Agents keep the NavMeshAgent for pathing and path following, and are pushed apart by a clamped proportional force instead of the built in solver's predictive RVO, so a dense crowd compresses and relaxes rather than snapping and teleporting. Groups let flyers, melee and slow ranged run different planes and update intervals in one scene, and an optional path scheduler paces repathing by distance to goal so the ranks about to reach the player update far more often than the ones still crossing the map.",
   "author": {
     "name": "Andre Leandro",
     "url": "https://github.com/innocentmiau",
@@ -23,6 +23,7 @@
     "horde",
     "burst",
     "jobs",
+    "pathfinding",
     "performance"
   ],
   "dependencies": {
